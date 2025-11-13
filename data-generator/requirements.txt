@@ -1,0 +1,6 @@
+# Data Generator Dependencies
+numpy==1.26.3
+redis==5.0.1
+python-dotenv==1.0.0
+faker==22.0.0
+

@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: genesis_postgres
+    environment:
+      POSTGRES_USER: genesis_user
+      POSTGRES_PASSWORD: genesis_pass
+      POSTGRES_DB: genesis_twin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - genesis_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U genesis_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: genesis_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - genesis_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: genesis_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://genesis_user:genesis_pass@postgres:5432/genesis_twin
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - genesis_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # AI Core Service
+  ai-core:
+    build:
+      context: ./ai-core
+      dockerfile: Dockerfile
+    container_name: genesis_ai_core
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    volumes:
+      - ./ai-core:/app
+    depends_on:
+      - redis
+    networks:
+      - genesis_network
+    command: python main.py
+
+  # Digital Twin Simulator
+  digital-twin:
+    build:
+      context: ./digital-twin
+      dockerfile: Dockerfile
+    container_name: genesis_digital_twin
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://genesis_user:genesis_pass@postgres:5432/genesis_twin
+    env_file:
+      - .env
+    volumes:
+      - ./digital-twin:/app
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - genesis_network
+    command: python simulator.py
+
+  # Data Generator
+  data-generator:
+    build:
+      context: ./data-generator
+      dockerfile: Dockerfile
+    container_name: genesis_data_generator
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    volumes:
+      - ./data-generator:/app
+    depends_on:
+      - redis
+    networks:
+      - genesis_network
+    command: python generate_data.py
+
+  # Frontend Dashboard
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: genesis_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000/ws
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - genesis_network
+    command: npm start
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  genesis_network:
+    driver: bridge
+

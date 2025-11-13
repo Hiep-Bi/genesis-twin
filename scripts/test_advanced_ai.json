@@ -1,0 +1,35 @@
+[
+  {
+    "timestamp": "2025-03-10 08:00:00",
+    "machine_id": "M003",
+    "machine_type": "Welder",
+    "temperature": 78.30287890499571,
+    "vibration_level": 2.0437509410646153,
+    "power_consumption": 23.059855498503904,
+    "pressure": 5.088075725682053,
+    "material_flow_rate": 20.01102601237955,
+    "cycle_time": 118.1465104239191,
+    "error_rate": 0.8832458953712125,
+    "downtime": 0,
+    "maintenance_flag": 0,
+    "efficiency_score": 11.675410462878759,
+    "production_status": 0
+  },
+  {
+    "timestamp": "2025-03-10 09:20:00",
+    "machine_id": "M003",
+    "machine_type": "CNC",
+    "temperature": 87.36671089603603,
+    "vibration_level": 5.899657929213271,
+    "power_consumption": 26.43076629772936,
+    "pressure": 5.41086041435726,
+    "material_flow_rate": 16.575142048077442,
+    "cycle_time": 115.67913960413017,
+    "error_rate": 1.0,
+    "downtime": 0,
+    "maintenance_flag": 1,
+    "efficiency_score": 0.0,
+    "production_status": 0
+  }
+]
+

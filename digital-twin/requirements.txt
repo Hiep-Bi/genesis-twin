@@ -1,0 +1,9 @@
+# Digital Twin Engine Dependencies
+numpy==1.26.3
+pandas==2.1.4
+redis==5.0.1
+python-dotenv==1.0.0
+scipy==1.11.4
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.25
+
