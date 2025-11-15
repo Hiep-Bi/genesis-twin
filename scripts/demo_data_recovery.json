@@ -1,0 +1,76 @@
+{
+  "scenario": "Production Line Recovery - 3 dây chuyền sập",
+  "description": "Scenario để demo Recovery System khi 3 dây chuyền bị sập",
+  "affected_lines": ["LINE-01", "LINE-02", "LINE-03"],
+  "agv_server_status": "down",
+  "production_orders": [
+    {
+      "order_number": "ORD-2025-001",
+      "product_code": "PROD-LINE01-ABC123",
+      "quantity": 500,
+      "priority": 9,
+      "scheduled_end": "2025-01-15T18:00:00Z",
+      "status": "in_progress"
+    },
+    {
+      "order_number": "ORD-2025-002",
+      "product_code": "PROD-LINE01-XYZ789",
+      "quantity": 300,
+      "priority": 7,
+      "scheduled_end": "2025-01-16T12:00:00Z",
+      "status": "pending"
+    },
+    {
+      "order_number": "ORD-2025-003",
+      "product_code": "PROD-LINE02-DEF456",
+      "quantity": 200,
+      "priority": 8,
+      "scheduled_end": "2025-01-15T20:00:00Z",
+      "status": "in_progress"
+    },
+    {
+      "order_number": "ORD-2025-004",
+      "product_code": "PROD-LINE03-GHI789",
+      "quantity": 150,
+      "priority": 6,
+      "scheduled_end": "2025-01-16T10:00:00Z",
+      "status": "pending"
+    }
+  ],
+  "inventory_status": {
+    "main_warehouse": {
+      "MAT-001": {"quantity": 1000, "material_name": "Linh kiện A"},
+      "MAT-002": {"quantity": 800, "material_name": "Linh kiện B"},
+      "MAT-003": {"quantity": 500, "material_name": "Linh kiện C"},
+      "MAT-004": {"quantity": 300, "material_name": "Vật liệu đóng gói"}
+    },
+    "external_staging": {
+      "MAT-001": {"quantity": 500, "material_name": "Linh kiện A"},
+      "MAT-002": {"quantity": 400, "material_name": "Linh kiện B"}
+    }
+  },
+  "expected_result": {
+    "recovery_sequence": [
+      {
+        "step": 1,
+        "line_code": "LINE-01",
+        "priority_score": 90,
+        "reason": "Có inventory ở kho chờ ngoài, priority cao, upstream line"
+      },
+      {
+        "step": 2,
+        "line_code": "LINE-02",
+        "priority_score": 70,
+        "reason": "Priority cao, có inventory ở kho tổng"
+      },
+      {
+        "step": 3,
+        "line_code": "LINE-03",
+        "priority_score": 50,
+        "reason": "Priority thấp hơn, có inventory"
+      }
+    ],
+    "total_recovery_time_minutes": 120
+  }
+}
+

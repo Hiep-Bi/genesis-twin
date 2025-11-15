@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.database import init_db, close_db
 from app.core.redis_client import redis_client
 from app.api import auth
-from app.api import machines, sensors, production, analytics, ai_predictions, traceability, advanced_features
+from app.api import machines, sensors, production, analytics, ai_predictions, traceability, advanced_features, factory_operations
 from app.websockets import websocket_manager
 
 # Configure logging
@@ -162,6 +162,7 @@ app.include_router(analytics.router, prefix=settings.API_V1_PREFIX)
 app.include_router(ai_predictions.router, prefix=settings.API_V1_PREFIX)
 app.include_router(traceability.router, prefix=settings.API_V1_PREFIX)
 app.include_router(advanced_features.router, prefix=settings.API_V1_PREFIX)
+app.include_router(factory_operations.router, prefix=settings.API_V1_PREFIX)
 
 # Include WebSocket endpoint
 from app.websockets.ws_handler import router as ws_router

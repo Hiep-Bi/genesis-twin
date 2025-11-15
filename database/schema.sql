@@ -272,6 +272,39 @@ CREATE TABLE system_settings (
     updated_by UUID REFERENCES users(id)
 );
 
+-- Production Line Mapping (Config for Recovery & AGV Fallback)
+CREATE TABLE production_line_mapping (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_code_pattern VARCHAR(100) NOT NULL, -- Pattern like "PROD-LINE01-*" or "LINE01-*"
+    line_code VARCHAR(50) NOT NULL, -- Actual line code like "LINE-01"
+    line_name VARCHAR(255),
+    line_type VARCHAR(50), -- "machining", "assembly", "packaging", etc.
+    priority_base INTEGER DEFAULT 5, -- Base priority (1-10)
+    is_upstream BOOLEAN DEFAULT FALSE, -- Upstream lines affect downstream
+    dependencies JSONB, -- List of dependent line codes
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_line_mapping_pattern ON production_line_mapping(product_code_pattern);
+CREATE INDEX idx_line_mapping_code ON production_line_mapping(line_code);
+
+-- Line Material Requirements (Config for Inventory Intelligence)
+CREATE TABLE line_material_requirements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    line_code VARCHAR(50) NOT NULL,
+    material_code VARCHAR(50) NOT NULL REFERENCES materials(material_code),
+    required_quantity_per_unit FLOAT NOT NULL, -- Quantity needed per product unit
+    is_critical BOOLEAN DEFAULT FALSE, -- Critical material (cannot proceed without)
+    preferred_location VARCHAR(50), -- "main_warehouse" or "external_staging"
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(line_code, material_code)
+);
+
+CREATE INDEX idx_line_material_line ON line_material_requirements(line_code);
+CREATE INDEX idx_line_material_material ON line_material_requirements(material_code);
+
 -- Insert default admin user (password: admin123 - CHANGE IN PRODUCTION!)
 INSERT INTO users (username, email, hashed_password, full_name, role)
 VALUES (

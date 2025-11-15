@@ -55,7 +55,7 @@ class OrchestrationEngine:
         🚚 Assign task to optimal AGV
         
         Args:
-            task_type: 'transport_material', 'qr_scan', 'delivery'
+            task_type: 'transport_material', 'qr_scan', 'delivery', 'shipping'
             from_location: Start position {x, y}
             to_location: End position {x, y}
             priority: 1 (low) to 10 (critical)
