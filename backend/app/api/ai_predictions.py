@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-
+import pandas as pd
+import pickle
 from app.core.database import get_db
 from app.models.user import User
 from app.api.dependencies import get_current_user
@@ -70,7 +71,7 @@ async def predict_defect_advanced(
         "cycle_time": 118.15,
         "error_rate": 0.88,
         "downtime": 0,
-        "maintenance_flag": 0,
+        "maintenance_flag": 0,  #trong thực tế sẽ không có chỉ số này phải đi dự đoán 
         "efficiency_score": 11.68,
         "production_status": 0
       },
@@ -99,15 +100,16 @@ async def predict_defect_advanced(
         import sys
         sys.path.append('../ai-core')
         from enhanced_gemini_client import enhanced_gemini_client
+        from rule_base_prediction import predict
         
         results = []
         
         for sensor_data in data:
             # Convert to dict
             current_data = sensor_data.dict()
-            
+            filtered_data = predict(current_data)
             # Determine status first
-            if sensor_data.maintenance_flag == 0 and sensor_data.efficiency_score > 5:
+            if filtered_data == 0:
                 # Normal operation
                 result = {
                     "status": "✅ Trạng thái ổn định",
