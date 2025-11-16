@@ -16,6 +16,7 @@ from app.core.security import (
     security_manager
 )
 from app.models.user import User, UserRole
+from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 security = HTTPBearer()

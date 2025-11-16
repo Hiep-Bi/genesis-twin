@@ -6,7 +6,9 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --legacy-peer-deps && \
+    npm install ajv@6.12.6 ajv-keywords@3.5.2 --save --legacy-peer-deps && \
+    npm cache clean --force
 
 # Copy application code
 COPY . .

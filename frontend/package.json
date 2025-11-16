@@ -22,7 +22,9 @@
     "zustand": "^4.4.7",
     "framer-motion": "^10.18.0",
     "date-fns": "^3.0.6",
-    "recharts": "^2.10.3"
+    "recharts": "^2.10.3",
+    "ajv": "^6.12.6",
+    "ajv-keywords": "^3.5.2"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -52,6 +54,12 @@
     "@types/react-dom": "^18.2.18",
     "@types/three": "^0.159.0",
     "typescript": "^5.3.3"
+  },
+  "resolutions": {
+    "ajv": "^6.12.6"
+  },
+  "overrides": {
+    "ajv": "^6.12.6"
   }
 }
 

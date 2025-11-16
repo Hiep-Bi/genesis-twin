@@ -1,75 +1,55 @@
-"""Enhanced Gemini AI Client với Advanced Reasoning"""
-import google.generativeai as genai
+from unsloth import FastLanguageModel
+import torch
+from transformers import TextStreamer
+import re
 from typing import Optional, Dict, Any, List
 import logging
 import json
 import pandas as pd
 from datetime import datetime, timedelta
-
-from config import config
+from pydantic import BaseModel
+import asyncio
 
 logger = logging.getLogger(__name__)
 
-class EnhancedGeminiClient:
-    """Enhanced Gemini client với deep reasoning và real data integration"""
-    
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+    "unsloth/gpt-oss-20b",
+    max_seq_length=2048,
+    dtype=torch.float16,
+    load_in_4bit=True,
+)
+
+
+class EnhancedGPTClient:
     def __init__(self):
-        self.model = None
+        self.model = model
+        self.tokenizer = tokenizer
         self.production_data = None
         self.maintenance_history = None
-        self._configure()
         self._load_real_data()
     
-    def _configure(self):
-        """Configure Gemini API"""
-        if not config.GEMINI_API_KEY:
-            logger.warning("GEMINI_API_KEY not set. Using mock mode.")
-            return
-        
-        try:
-            genai.configure(api_key=config.GEMINI_API_KEY)
-            self.model = genai.GenerativeModel(config.GEMINI_MODEL)
-            logger.info(f"✅ Gemini client configured: {config.GEMINI_MODEL}")
-        except Exception as e:
-            logger.error(f"Failed to configure Gemini: {e}")
-    
     def _load_real_data(self):
-        """Load real production and maintenance data"""
         try:
-            # Load CSV files
-            self.production_data = pd.read_csv("data/Production System Dataset.csv")
-            self.maintenance_history = pd.read_csv("data/maintenance_history_with_type.csv")
-            
-            logger.info(f"✅ Loaded {len(self.production_data)} production records")
-            logger.info(f"✅ Loaded {len(self.maintenance_history)} maintenance records")
-            
+            self.production_data = pd.read_csv("/root/Production System Dataset.csv")
+            self.maintenance_history = pd.read_csv("/root/maintenance_history_with_type.csv")
+            print(f"✅ Loaded {len(self.production_data)} production records")
+            print(f"✅ Loaded {len(self.maintenance_history)} maintenance records")
         except Exception as e:
-            logger.warning(f"Could not load real data: {e}. Using simulation mode.")
+            print(f"⚠️ Could not load real data: {e}")
     
-    async def advanced_defect_prediction(
+
+
+    async def advanced_defect_prediction(  
         self,
         current_data: Dict[str, Any],
         machine_id: str,
         machine_type: str
     ) -> Dict[str, Any]:
-        """
-        Advanced defect prediction với:
-        1. Root cause analysis chi tiết
-        2. Historical pattern matching
-        3. Maintenance scheduling optimization
-        4. Multi-scenario planning
-        """
-        
-        # 1. Get maintenance history cho machine này
         maintenance_hist = self._get_maintenance_history(machine_id, machine_type)
-        
-        # 2. Get similar historical patterns
         similar_cases = self._find_similar_cases(current_data, machine_type)
-        
-        # 3. Analyze với Gemini
         if not self.model:
             return self._mock_advanced_prediction(current_data, maintenance_hist)
-        
         try:
             prompt = f"""
 Bạn là chuyên gia AI về bảo trì dự đoán trong Smart Manufacturing.
@@ -88,7 +68,6 @@ Bạn là chuyên gia AI về bảo trì dự đoán trong Smart Manufacturing.
 ```json
 {json.dumps(similar_cases, indent=2)}
 ```
-
 Hãy phân tích chi tiết và trả về JSON với cấu trúc sau:
 
 {{
@@ -171,22 +150,29 @@ Hãy phân tích chi tiết và trả về JSON với cấu trúc sau:
 - So sánh các phương án một cách ĐỊNH LƯỢNG
 - Reasoning phải rõ ràng, dễ hiểu
 """
-            
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.4,  # Lower for more deterministic
-                    max_output_tokens=3000,
+            loop = asyncio.get_event_loop()
+            def run_inference():
+                inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)              
+                outputs = self.model.generate(
+                    input_ids=inputs.input_ids,
+                    attention_mask=inputs.attention_mask,
+                    max_new_tokens=3000,
+                    temperature=0.4,
+                    do_sample=True,
                 )
-            )
-            
-            result_text = response.text.strip()
-            
+                input_length = inputs.input_ids.shape[1]
+                generated_tokens = outputs[0][input_length:]
+                response_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+        
+                return response_text
+            response_text = await loop.run_in_executor(None, run_inference)
             # Extract JSON
+            result_text = response_text.strip()
             if "```json" in result_text:
                 result_text = result_text.split("```json")[1].split("```")[0].strip()
             elif "```" in result_text:
                 result_text = result_text.split("```")[1].split("```")[0].strip()
+            
             
             result = json.loads(result_text)
             
@@ -201,25 +187,21 @@ Hãy phân tích chi tiết và trả về JSON với cấu trúc sau:
         except Exception as e:
             logger.error(f"Error in advanced prediction: {e}")
             return self._mock_advanced_prediction(current_data, maintenance_hist)
-    
-    def _get_maintenance_history(self, machine_id: str, machine_type: str) -> List[Dict]:
-        """Get maintenance history từ real data"""
+
+    def _get_maintenance_history(self, machine_id: str, machine_type: str) -> Dict:
         if self.maintenance_history is None:
-            return []
+            return {}
         
-        # Filter by machine_id and machine_type
         filtered = self.maintenance_history[
             (self.maintenance_history['machine_id'] == machine_id) &
             (self.maintenance_history['machine_type'] == machine_type)
         ]
         
         if len(filtered) == 0:
-            return []
+            return {}
         
-        # Convert to dict and return last 10
         records = filtered.tail(10).to_dict('records')
         
-        # Calculate maintenance cycle
         if len(records) > 1:
             dates = pd.to_datetime(filtered['maintenance_date'])
             if len(dates) > 1:
@@ -228,36 +210,29 @@ Hãy phân tích chi tiết và trả về JSON với cấu trúc sau:
                     "records": records,
                     "avg_cycle_days": round(avg_cycle, 0),
                     "avg_downtime_hours": round(filtered['downtime_hours'].mean(), 1),
-                    "common_issues": filtered['issue'].value_counts().head(5).to_dict()
                 }
         
-        return {"records": records, "avg_cycle_days": None, "avg_downtime_hours": None}
+        return {"records": records}
     
     def _find_similar_cases(self, current_data: Dict, machine_type: str) -> List[Dict]:
-        """Find similar cases từ production data"""
         if self.production_data is None:
             return []
         
         try:
-            # Filter by machine type and maintenance_flag = 1
             filtered = self.production_data[
-                (self.production_data['machine_type'] == machine_type) &
-                (self.production_data['maintenance_flag'] == 1)
+                (self.production_data['machine_type'] == machine_type)
             ]
             
             if len(filtered) == 0:
                 return []
             
-            # Get similar cases (top 5)
             similar = filtered.tail(5)[['timestamp', 'temperature', 'vibration_level', 
                                         'efficiency_score', 'error_rate']].to_dict('records')
-            
             return similar
-            
         except Exception as e:
-            logger.error(f"Error finding similar cases: {e}")
+            print(f"Error finding similar cases: {e}")
             return []
-    
+
     def _mock_advanced_prediction(self, current_data: Dict, maintenance_hist: Dict) -> Dict:
         """Mock prediction khi không có Gemini API"""
         
@@ -383,8 +358,5 @@ Hãy phân tích chi tiết và trả về JSON với cấu trúc sau:
         }
         
         return result
-
-
-# Global instance
-enhanced_gemini_client = EnhancedGeminiClient()
-
+        
+enhanced_gpt_client = EnhancedGPTClient()
