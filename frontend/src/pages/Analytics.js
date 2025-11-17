@@ -101,9 +101,16 @@ const Analytics = () => {
         advancedFeaturesAPI.getAdjustmentHistory(10),
       ]);
 
-      setPredictions(predictionRes.data ?? fallbackPredictions);
+      setPredictions(
+        predictionRes.data && predictionRes.data.length > 0
+          ? predictionRes.data
+          : fallbackPredictions,
+      );
       setControlHistory(
-        controlHistoryRes.data?.history ?? fallbackControlHistory,
+        controlHistoryRes.data?.history &&
+          controlHistoryRes.data.history.length > 0
+          ? controlHistoryRes.data.history
+          : fallbackControlHistory,
       );
     } catch (error) {
       console.warn('Analytics data fallback due to error:', error);

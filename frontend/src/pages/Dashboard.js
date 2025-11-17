@@ -299,6 +299,27 @@ const mockAlerts = [
 ];
 
 const Dashboard = () => {
+  const fallbackFactories = [
+    { id: 'factory-alpha', name: 'Factory Alpha', location: 'Industrial Park East' },
+    { id: 'factory-beta', name: 'Factory Beta', location: 'Innovation Hub West' },
+  ];
+  const fallbackSuppliers = [
+    { id: 'sup-001', name: 'Global Components', supplier_code: 'SUP-001' },
+    { id: 'sup-002', name: 'Local Raw Materials', supplier_code: 'SUP-002' },
+  ];
+  const fallbackMaterials = [
+    { id: 'mat-001', name: 'Linh kiện A', material_code: 'MAT-001' },
+    { id: 'mat-002', name: 'Linh kiện B', material_code: 'MAT-002' },
+  ];
+  const fallbackSystemSettings = [
+    { key: 'dashboard_refresh_interval_sec', value: { interval: 10 } },
+    { key: 'anomaly_detection_threshold', value: { threshold: 0.85 } },
+  ];
+  const fallbackOEEByMachine = [
+    { machine_code: 'CNC-001', oee: 91.2 },
+    { machine_code: 'ROB-002', oee: 87.5 },
+  ];
+
   const [metrics, setMetrics] = useState({
     oee: 0,
     production_count: 0,
@@ -311,12 +332,12 @@ const Dashboard = () => {
   const [energyTrend, setEnergyTrend] = useState(null);
   const [loading, setLoading] = useState(true);
   const [alerts, setAlerts] = useState(mockAlerts);
-  const [factories, setFactories] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [systemSettings, setSystemSettings] = useState([]);
+  const [factories, setFactories] = useState(fallbackFactories);
+  const [suppliers, setSuppliers] = useState(fallbackSuppliers);
+  const [materials, setMaterials] = useState(fallbackMaterials);
+  const [systemSettings, setSystemSettings] = useState(fallbackSystemSettings);
   const [aiPredictions, setAiPredictions] = useState([]);
-  const [oeeByMachine, setOeeByMachine] = useState([]);
+  const [oeeByMachine, setOeeByMachine] = useState(fallbackOEEByMachine);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -336,33 +357,37 @@ const Dashboard = () => {
 
       // Fetch OEE by machine data
       const oeeResponse = await analyticsAPI.getOEEByMachine();
-      if (oeeResponse.data) {
+      if (oeeResponse.data?.length) {
         setOeeByMachine(oeeResponse.data);
+      } else {
+        setOeeByMachine(fallbackOEEByMachine);
       }
 
       // Fetch Factories
       const factoriesResponse = await factoriesAPI.getAll();
-      if (factoriesResponse.data) {
-        setFactories(factoriesResponse.data);
-      }
+      setFactories(
+        factoriesResponse.data?.length ? factoriesResponse.data : fallbackFactories,
+      );
 
       // Fetch Suppliers
       const suppliersResponse = await suppliersAPI.getAll();
-      if (suppliersResponse.data) {
-        setSuppliers(suppliersResponse.data);
-      }
+      setSuppliers(
+        suppliersResponse.data?.length ? suppliersResponse.data : fallbackSuppliers,
+      );
 
       // Fetch Materials
       const materialsResponse = await materialsAPI.getAll();
-      if (materialsResponse.data) {
-        setMaterials(materialsResponse.data);
-      }
+      setMaterials(
+        materialsResponse.data?.length ? materialsResponse.data : fallbackMaterials,
+      );
 
       // Fetch System Settings
       const settingsResponse = await settingsAPI.getAll();
-      if (settingsResponse.data) {
-        setSystemSettings(settingsResponse.data);
-      }
+      setSystemSettings(
+        settingsResponse.data?.length
+          ? settingsResponse.data
+          : fallbackSystemSettings,
+      );
 
       // Fetch AI Predictions History
       try {
@@ -401,6 +426,12 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
+      setFactories(fallbackFactories);
+      setSuppliers(fallbackSuppliers);
+      setMaterials(fallbackMaterials);
+      setSystemSettings(fallbackSystemSettings);
+      setOeeByMachine(fallbackOEEByMachine);
+      setAlerts(mockAlerts);
     } finally {
       setLoading(false);
     }

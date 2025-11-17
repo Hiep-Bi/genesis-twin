@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.core.database import get_db
 from app.models.factory import Factory
@@ -12,6 +12,25 @@ from app.models.user import User
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/factories", tags=["Factories"])
+
+FALLBACK_FACTORIES = [
+    {
+        "id": uuid4(),
+        "name": "Factory Alpha",
+        "location": "Industrial Park East",
+        "config": {"lines": 3, "shift": "Morning"},
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    },
+    {
+        "id": uuid4(),
+        "name": "Factory Beta",
+        "location": "Innovation Hub West",
+        "config": {"lines": 2, "shift": "Evening"},
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    },
+]
 
 
 class FactoryResponse(BaseModel):
@@ -37,6 +56,8 @@ async def list_factories(
     List all factories
     """
     factories = db.query(Factory).offset(skip).limit(limit).all()
+    if not factories:
+        return FALLBACK_FACTORIES
     return factories
 
 

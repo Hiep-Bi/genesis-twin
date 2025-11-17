@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from app.core.database import get_db
 from app.models.supplier import Material
@@ -12,6 +12,29 @@ from app.models.user import User
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/materials", tags=["Materials"])
+
+FALLBACK_MATERIALS = [
+    {
+        "id": uuid4(),
+        "material_code": "MAT-001",
+        "name": "Linh kiện A",
+        "supplier_id": None,
+        "unit": "pcs",
+        "unit_price": 10.5,
+        "carbon_footprint_per_unit": 0.8,
+        "created_at": datetime.utcnow(),
+    },
+    {
+        "id": uuid4(),
+        "material_code": "MAT-002",
+        "name": "Linh kiện B",
+        "supplier_id": None,
+        "unit": "pcs",
+        "unit_price": 8.2,
+        "carbon_footprint_per_unit": 0.6,
+        "created_at": datetime.utcnow(),
+    },
+]
 
 
 class MaterialResponse(BaseModel):
@@ -39,6 +62,8 @@ async def list_materials(
     List all materials
     """
     materials = db.query(Material).offset(skip).limit(limit).all()
+    if not materials:
+        return FALLBACK_MATERIALS
     return materials
 
 
