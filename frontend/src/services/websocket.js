@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
+const WS_URL = process.env.REACT_APP_WS_URL || 'http://localhost:8000';
 
 class WebSocketService {
   constructor() {

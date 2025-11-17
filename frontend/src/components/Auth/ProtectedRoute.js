@@ -1,7 +1,7 @@
-import React from 'react';
+// components/Auth/ProtectedRoute.js
+import { Box, CircularProgress } from '@mui/material';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../services/authContext';
-import { CircularProgress, Box } from '@mui/material';
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -9,16 +9,18 @@ const ProtectedRoute = ({ children }) => {
   if (loading) {
     return (
       <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="100vh"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%)',
+        }}
       >
-        <CircularProgress />
+        <CircularProgress color="primary" />
       </Box>
     );
   }
-
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -27,4 +29,3 @@ const ProtectedRoute = ({ children }) => {
 };
 
 export default ProtectedRoute;
-

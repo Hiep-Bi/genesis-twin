@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
+  Alert,
   Box,
+  Button,
   Container,
   Paper,
   TextField,
-  Button,
   Typography,
-  Alert,
 } from '@mui/material';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 
 const Login = () => {
@@ -18,20 +18,17 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     const result = await login(username, password);
-
+    console.log(result);
     if (result.success) {
       navigate('/dashboard');
     } else {
       setError(result.error);
     }
-
     setLoading(false);
   };
 
@@ -42,17 +39,17 @@ const Login = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%)',
+        background: 'linear-gradient(135deg, #ffebee 0%, #fafafa 100%)',
       }}
     >
       <Container maxWidth="sm">
         <Paper
-          elevation={24}
+          elevation={8}
           sx={{
             p: 4,
             borderRadius: 4,
-            background: 'linear-gradient(135deg, #151932 0%, #1a1f3a 100%)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            background: '#ffffff',
+            border: '1px solid rgba(211, 47, 47, 0.1)',
           }}
         >
           <Typography
@@ -60,17 +57,20 @@ const Login = () => {
             align="center"
             gutterBottom
             sx={{
-              background: 'linear-gradient(135deg, #00d9ff 0%, #00ff88 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
+              color: 'primary.main',
               fontWeight: 700,
               mb: 3,
             }}
           >
             GENESIS TWIN
           </Typography>
-          
-          <Typography variant="body2" align="center" sx={{ mb: 4, opacity: 0.7 }}>
+
+          <Typography
+            variant="body2"
+            align="center"
+            color="text.secondary"
+            sx={{ mb: 4 }}
+          >
             Zero-Impact Smart Factory OS
           </Typography>
 
@@ -110,9 +110,9 @@ const Login = () => {
               sx={{
                 mt: 3,
                 py: 1.5,
-                background: 'linear-gradient(135deg, #00d9ff 0%, #00ff88 100%)',
+                bgcolor: 'primary.main',
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #00c0e6 0%, #00e67a 100%)',
+                  bgcolor: 'primary.dark',
                 },
               }}
             >
@@ -120,7 +120,12 @@ const Login = () => {
             </Button>
           </form>
 
-          <Typography variant="caption" align="center" display="block" sx={{ mt: 3, opacity: 0.5 }}>
+          <Typography
+            variant="caption"
+            align="center"
+            display="block"
+            sx={{ mt: 3, opacity: 0.5 }}
+          >
             Default credentials: admin / admin123
           </Typography>
         </Paper>
@@ -130,4 +135,3 @@ const Login = () => {
 };
 
 export default Login;
-

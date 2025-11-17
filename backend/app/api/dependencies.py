@@ -49,19 +49,62 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    # Use raw SQL to avoid enum conversion issues (DB has lowercase role but enum expects uppercase)
+    from sqlalchemy import text
+    query = text("""
+        SELECT 
+            id::text as id,
+            username,
+            email,
+            hashed_password,
+            full_name,
+            role::text as role,
+            is_active,
+            created_at,
+            updated_at,
+            last_login
+        FROM users
+        WHERE id = :user_id
+        LIMIT 1
+    """)
+    
+    result = db.execute(query, {"user_id": user_id}).fetchone()
+    if not result:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if not user.is_active:
+    if not result.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+    
+    # Create User object from raw SQL result to avoid enum issues
+    # Map role string to enum if possible, otherwise use string
+    role_str = (result.role or '').upper()
+    role_mapping = {
+        'ADMIN': UserRole.ADMIN,
+        'ENGINEER': UserRole.ENGINEER,
+        'OPERATOR': UserRole.OPERATOR,
+        'VIEWER': UserRole.VIEWER,
+    }
+    role_enum = role_mapping.get(role_str, UserRole.VIEWER)
+    
+    # Create a User instance manually to avoid SQLAlchemy enum conversion
+    user = User()
+    user.id = result.id
+    user.username = result.username
+    user.email = result.email
+    user.hashed_password = result.hashed_password
+    user.full_name = result.full_name
+    user.role = role_enum
+    user.is_active = result.is_active
+    user.created_at = result.created_at
+    user.updated_at = result.updated_at
+    user.last_login = result.last_login
     
     return user
 

@@ -1,33 +1,38 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Container,
-  Grid,
-  Paper,
-  Typography,
+  DirectionsCar as AGVIcon,
+  SmartToy as AIIcon,
+  CheckCircleOutline,
+  Settings as ControlIcon,
+  Nature as ESGIcon,
+  LocalShipping as FleetIcon,
+  TrendingUp as OptimizeIcon,
+} from '@mui/icons-material';
+import {
+  Alert,
   Box,
+  Button,
   Card,
   CardContent,
-  Button,
   Chip,
-  Alert,
+  Container,
+  Grid,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Paper,
   Tab,
-  Tabs,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  LinearProgress
+  Tabs,
+  Typography,
 } from '@mui/material';
-import {
-  SmartToy as AIIcon,
-  DirectionsCar as AGVIcon,
-  Eco as ESGIcon,
-  TrendingUp as OptimizeIcon,
-  Settings as ControlIcon,
-  LocalShipping as FleetIcon
-} from '@mui/icons-material';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
 
 const AdvancedFeatures = () => {
@@ -45,7 +50,9 @@ const AdvancedFeatures = () => {
 
   const fetchFleetStatus = async () => {
     try {
-      const response = await api.get('/api/v1/advanced/orchestration/fleet-status');
+      const response = await api.get(
+        '/api/v1/advanced/orchestration/fleet-status',
+      );
       setFleetStatus(response.data);
     } catch (err) {
       console.error('Failed to fetch fleet status:', err);
@@ -63,7 +70,9 @@ const AdvancedFeatures = () => {
 
   const fetchActiveControls = async () => {
     try {
-      const response = await api.get('/api/v1/advanced/autonomous-control/active');
+      const response = await api.get(
+        '/api/v1/advanced/autonomous-control/active',
+      );
       setActiveControls(response.data.controls);
     } catch (err) {
       console.error('Failed to fetch active controls:', err);
@@ -73,18 +82,25 @@ const AdvancedFeatures = () => {
   const handleTestAGVAssignment = async () => {
     setLoading(true);
     try {
-      const response = await api.post('/api/v1/advanced/orchestration/assign-agv', {
-        task_type: 'transport_material',
-        from_location: { x: 40, y: 50 },
-        to_location: { x: 120, y: 75 },
-        priority: 8,
-        payload: { material_code: 'MAT-TEST-001' }
-      });
-      
-      alert(`AGV Assigned!\n${response.data.message}\nTask ID: ${response.data.task?.task_id}`);
+      const response = await api.post(
+        '/api/v1/advanced/orchestration/assign-agv',
+        {
+          task_type: 'transport_material',
+          from_location: { x: 40, y: 50 },
+          to_location: { x: 120, y: 75 },
+          priority: 8,
+          payload: { material_code: 'MAT-TEST-001' },
+        },
+      );
+
+      alert(
+        `AGV Assigned!\n${response.data.message}\nTask ID: ${response.data.task?.task_id}`,
+      );
       await fetchFleetStatus();
     } catch (err) {
-      alert('Failed to assign AGV: ' + (err.response?.data?.detail || err.message));
+      alert(
+        'Failed to assign AGV: ' + (err.response?.data?.detail || err.message),
+      );
     } finally {
       setLoading(false);
     }
@@ -119,7 +135,9 @@ const AdvancedFeatures = () => {
         <Grid container spacing={3} sx={{ mt: 1 }}>
           <Grid item xs={12}>
             <Alert severity="info">
-              <strong>🤖 Autonomous Control Loop:</strong> System automatically detects anomalies and adjusts machine parameters without human intervention.
+              <strong>🤖 Autonomous Control Loop:</strong> System automatically
+              detects anomalies and adjusts machine parameters without human
+              intervention.
             </Alert>
           </Grid>
 
@@ -129,27 +147,50 @@ const AdvancedFeatures = () => {
                 <Typography variant="h6" gutterBottom>
                   Features
                 </Typography>
-                <ul>
-                  <li>Real-time anomaly detection</li>
-                  <li>Auto-calculate optimal parameters</li>
-                  <li>Safety validation</li>
-                  <li>Closed-loop feedback monitoring</li>
-                </ul>
+                <List>
+                  {[
+                    'Real-time anomaly detection',
+                    'Auto-calculate optimal parameters',
+                    'Safety validation',
+                    'Closed-loop feedback monitoring',
+                  ].map((feature, index) => (
+                    <ListItem key={index}>
+                      <ListItemIcon>
+                        <CheckCircleOutline color="primary" />
+                      </ListItemIcon>
+                      <ListItemText primary={feature} />
+                    </ListItem>
+                  ))}
+                </List>
               </CardContent>
             </Card>
           </Grid>
 
           <Grid item xs={12} md={8}>
             <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2,
+                }}
+              >
                 <Typography variant="h6">Active Control Loops</Typography>
-                <Button variant="outlined" size="small" onClick={fetchActiveControls}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={fetchActiveControls}
+                >
                   Refresh
                 </Button>
               </Box>
 
               {activeControls.length === 0 ? (
-                <Alert severity="success">No active control interventions - all machines operating normally</Alert>
+                <Alert severity="success">
+                  No active control interventions - all machines operating
+                  normally
+                </Alert>
               ) : (
                 <TableContainer>
                   <Table>
@@ -166,9 +207,15 @@ const AdvancedFeatures = () => {
                         <TableRow key={index}>
                           <TableCell>{control.machine_id}</TableCell>
                           <TableCell>
-                            <Chip label={control.status} color="primary" size="small" />
+                            <Chip
+                              label={control.status}
+                              color="primary"
+                              size="small"
+                            />
                           </TableCell>
-                          <TableCell>{new Date(control.timestamp).toLocaleString()}</TableCell>
+                          <TableCell>
+                            {new Date(control.timestamp).toLocaleString()}
+                          </TableCell>
                           <TableCell>
                             {JSON.stringify(control.adjustments?.parameters)}
                           </TableCell>
@@ -188,7 +235,8 @@ const AdvancedFeatures = () => {
         <Grid container spacing={3} sx={{ mt: 1 }}>
           <Grid item xs={12}>
             <Alert severity="info">
-              <strong>🚚 Orchestration Engine:</strong> Intelligent coordination of AGVs, robots, and machines for optimal factory throughput.
+              <strong>🚚 Orchestration Engine:</strong> Intelligent coordination
+              of AGVs, robots, and machines for optimal factory throughput.
             </Alert>
           </Grid>
 
@@ -254,7 +302,14 @@ const AdvancedFeatures = () => {
 
               <Grid item xs={12}>
                 <Paper sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      mb: 2,
+                    }}
+                  >
                     <Typography variant="h6">
                       <AGVIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                       AGV Fleet Details
@@ -286,15 +341,24 @@ const AdvancedFeatures = () => {
                             <TableCell>
                               <Chip
                                 label={agv.status}
-                                color={agv.status === 'idle' ? 'success' : 'warning'}
+                                color={
+                                  agv.status === 'idle' ? 'success' : 'warning'
+                                }
                                 size="small"
                               />
                             </TableCell>
                             <TableCell>
-                              ({agv.current_position.x}, {agv.current_position.y})
+                              ({agv.current_position.x},{' '}
+                              {agv.current_position.y})
                             </TableCell>
                             <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                }}
+                              >
                                 {agv.battery_percent}%
                                 <LinearProgress
                                   variant="determinate"
@@ -304,7 +368,9 @@ const AdvancedFeatures = () => {
                               </Box>
                             </TableCell>
                             <TableCell>
-                              {agv.current_task ? agv.current_task.task_id : 'None'}
+                              {agv.current_task
+                                ? agv.current_task.task_id
+                                : 'None'}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -323,7 +389,9 @@ const AdvancedFeatures = () => {
         <Grid container spacing={3} sx={{ mt: 1 }}>
           <Grid item xs={12}>
             <Alert severity="info">
-              <strong>🌍 ESG Optimizer:</strong> Real-time Environmental, Social, Governance scoring with Pareto optimization for Cost/Productivity/Carbon balance.
+              <strong>🌍 ESG Optimizer:</strong> Real-time Environmental,
+              Social, Governance scoring with Pareto optimization for
+              Cost/Productivity/Carbon balance.
             </Alert>
           </Grid>
 
@@ -334,8 +402,8 @@ const AdvancedFeatures = () => {
                 <Card sx={{ bgcolor: 'success.light' }}>
                   <CardContent>
                     <Typography variant="h6" gutterBottom>
-                      <OptimizeIcon sx={{ mr: 1 }} />
-                      ✅ Recommended Operating Mode (Pareto Optimal)
+                      <OptimizeIcon sx={{ mr: 1 }} /> Recommended Operating
+                      Mode (Pareto Optimal)
                     </Typography>
                     <Grid container spacing={2} sx={{ mt: 1 }}>
                       <Grid item xs={12} md={3}>
@@ -361,7 +429,8 @@ const AdvancedFeatures = () => {
                       <Grid item xs={12} md={3}>
                         <Typography variant="body2">Carbon</Typography>
                         <Typography variant="h6">
-                          {paretoResults.current_recommendation?.carbon_kg} kg CO₂
+                          {paretoResults.current_recommendation?.carbon_kg} kg
+                          CO₂
                         </Typography>
                       </Grid>
                     </Grid>
@@ -375,7 +444,11 @@ const AdvancedFeatures = () => {
                   <Typography variant="h6" gutterBottom>
                     All Scenarios (Pareto Analysis)
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    gutterBottom
+                  >
                     {paretoResults.optimization_result.analysis}
                   </Typography>
 
@@ -394,30 +467,49 @@ const AdvancedFeatures = () => {
                       </TableHead>
                       <TableBody>
                         {paretoResults.all_scenarios.map((scenario, index) => {
-                          const isOptimal = paretoResults.optimization_result.pareto_solutions.includes(scenario);
-                          const isRecommended = scenario.name === paretoResults.current_recommendation?.name;
-                          
+                          const isOptimal =
+                            paretoResults.optimization_result.pareto_solutions.includes(
+                              scenario,
+                            );
+                          const isRecommended =
+                            scenario.name ===
+                            paretoResults.current_recommendation?.name;
+
                           return (
                             <TableRow
                               key={index}
-                              sx={{ 
-                                bgcolor: isRecommended ? 'success.light' : 'inherit',
-                                fontWeight: isRecommended ? 'bold' : 'normal'
+                              sx={{
+                                bgcolor: isRecommended
+                                  ? 'success.light'
+                                  : 'inherit',
+                                fontWeight: isRecommended ? 'bold' : 'normal',
                               }}
                             >
                               <TableCell>
                                 <strong>{scenario.name}</strong>
                               </TableCell>
                               <TableCell>{scenario.description}</TableCell>
-                              <TableCell align="right">{scenario.cost}</TableCell>
-                              <TableCell align="right">{scenario.productivity}</TableCell>
-                              <TableCell align="right">{scenario.carbon_kg}</TableCell>
-                              <TableCell align="right">{scenario.energy_kwh}</TableCell>
+                              <TableCell align="right">
+                                {scenario.cost}
+                              </TableCell>
+                              <TableCell align="right">
+                                {scenario.productivity}
+                              </TableCell>
+                              <TableCell align="right">
+                                {scenario.carbon_kg}
+                              </TableCell>
+                              <TableCell align="right">
+                                {scenario.energy_kwh}
+                              </TableCell>
                               <TableCell>
                                 {isOptimal && (
                                   <Chip
-                                    label={isRecommended ? "Recommended" : "Pareto"}
-                                    color={isRecommended ? "success" : "primary"}
+                                    label={
+                                      isRecommended ? 'Recommended' : 'Pareto'
+                                    }
+                                    color={
+                                      isRecommended ? 'success' : 'primary'
+                                    }
                                     size="small"
                                   />
                                 )}
@@ -430,7 +522,11 @@ const AdvancedFeatures = () => {
                   </TableContainer>
 
                   <Alert severity="info" sx={{ mt: 2 }}>
-                    <strong>Pareto Optimal Solutions:</strong> {paretoResults.optimization_result.pareto_optimal_count} out of {paretoResults.optimization_result.total_scenarios} scenarios are Pareto-optimal (no single objective can be improved without worsening another).
+                    <strong>Pareto Optimal Solutions:</strong>{' '}
+                    {paretoResults.optimization_result.pareto_optimal_count} out
+                    of {paretoResults.optimization_result.total_scenarios}{' '}
+                    scenarios are Pareto-optimal (no single objective can be
+                    improved without worsening another).
                   </Alert>
                 </Paper>
               </Grid>
@@ -443,4 +539,3 @@ const AdvancedFeatures = () => {
 };
 
 export default AdvancedFeatures;
-

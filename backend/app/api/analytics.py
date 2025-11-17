@@ -1,7 +1,7 @@
 """Analytics endpoints"""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from typing import Dict, List, Any
 from pydantic import BaseModel
 from datetime import datetime, timedelta
@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.redis_client import redis_client
 from app.models.user import User
 from app.api.dependencies import get_current_user
+from app.models.machine import Machine
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -39,14 +40,49 @@ async def get_dashboard_metrics(
         return cached
     
     # Calculate metrics from database
+    # Get time range for last 24 hours (or a relevant period for dashboard)
+    time_ago = datetime.utcnow() - timedelta(hours=24)
+
+    # OEE, Production, Defect Count from machine_states (raw SQL query)
+    oee_query = text("""
+        SELECT 
+            AVG(oee) as avg_oee,
+            SUM(production_count) as total_production,
+            SUM(defect_count) as total_defects
+        FROM machine_states
+        WHERE timestamp >= :time_ago
+    """)
+    oee_stats = db.execute(oee_query, {"time_ago": time_ago}).first()
+    
+    avg_oee = float(oee_stats.avg_oee) if oee_stats.avg_oee is not None else 0.0
+    total_production = int(oee_stats.total_production) if oee_stats.total_production is not None else 0
+    total_defects = int(oee_stats.total_defects) if oee_stats.total_defects is not None else 0
+
+    # Energy Consumption and Carbon Emissions (raw SQL query)
+    energy_query = text("""
+        SELECT 
+            SUM(energy_kwh) as total_energy_kwh,
+            SUM(carbon_emission_kg) as total_carbon_kg
+        FROM energy_consumption
+        WHERE timestamp >= :time_ago
+    """)
+    energy_stats = db.execute(energy_query, {"time_ago": time_ago}).first()
+    
+    total_energy_kwh = float(energy_stats.total_energy_kwh) if energy_stats.total_energy_kwh is not None else 0.0
+    total_carbon_kg = float(energy_stats.total_carbon_kg) if energy_stats.total_carbon_kg is not None else 0.0
+
+    # Machine counts
+    total_machines = db.query(func.count(Machine.id)).scalar()
+    machines_running = db.query(func.count(Machine.id)).filter(Machine.status == "running").scalar()
+    
     metrics = {
-        "oee": 85.5,  # Mock data - would calculate from machine_states
-        "energy_consumption_kwh": 1234.5,
-        "carbon_emissions_kg": 456.7,
-        "production_count": 1000,
-        "defect_count": 25,
-        "machines_running": 35,
-        "machines_total": 50
+        "oee": round(avg_oee, 2),
+        "energy_consumption_kwh": round(total_energy_kwh, 2),
+        "carbon_emissions_kg": round(total_carbon_kg, 2),
+        "production_count": int(total_production),
+        "defect_count": int(total_defects),
+        "machines_running": machines_running,
+        "machines_total": total_machines
     }
     
     # Cache for 10 seconds
@@ -62,10 +98,27 @@ async def get_energy_trend(
     current_user: User = Depends(get_current_user)
 ):
     """Get energy consumption trend"""
-    # Mock data - would query from energy_consumption table
+    end_time = datetime.utcnow()
+    start_time = end_time - timedelta(hours=hours)
+
+    query = text(f"""
+        SELECT
+            time_bucket('{hours // 6 or 1} hours', timestamp) AS hour_bucket,
+            SUM(energy_kwh) AS total_kwh
+        FROM energy_consumption
+        WHERE timestamp >= :start_time AND timestamp <= :end_time
+        GROUP BY hour_bucket
+        ORDER BY hour_bucket;
+    """)
+    
+    results = db.execute(query, {"start_time": start_time, "end_time": end_time}).fetchall()
+    
+    labels = [row[0].strftime("%H:%M") for row in results]
+    data = [round(row[1], 2) for row in results]
+    
     return {
-        "labels": ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00"],
-        "data": [120.5, 98.3, 145.7, 178.2, 156.4, 132.8],
+        "labels": labels,
+        "data": data,
         "unit": "kWh"
     }
 
@@ -76,11 +129,19 @@ async def get_oee_by_machine(
     current_user: User = Depends(get_current_user)
 ):
     """Get OEE by machine"""
-    # Mock data
-    return [
-        {"machine_code": "CNC-001", "oee": 87.5},
-        {"machine_code": "CNC-002", "oee": 92.3},
-        {"machine_code": "ROBOT-001", "oee": 78.9},
-        {"machine_code": "AGV-001", "oee": 95.1}
-    ]
+    time_ago = datetime.utcnow() - timedelta(hours=24)
+
+    # Use raw SQL query for time-series table
+    oee_query = text("""
+        SELECT 
+            m.machine_code,
+            AVG(ms.oee) as avg_oee
+        FROM machines m
+        JOIN machine_states ms ON m.id = ms.machine_id
+        WHERE ms.timestamp >= :time_ago
+        GROUP BY m.machine_code
+    """)
+    results = db.execute(oee_query, {"time_ago": time_ago}).fetchall()
+    
+    return [{"machine_code": row[0], "oee": round(float(row[1]), 2) if row[1] is not None else 0.0} for row in results]
 

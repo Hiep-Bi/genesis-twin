@@ -1,34 +1,34 @@
-import React, { useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-  Box,
-  Drawer,
+  SmartToy as AIIcon,
+  AccountCircle,
+  Analytics as AnalyticsIcon,
+  Dashboard as DashboardIcon,
+  Bolt as EnergyIcon,
+  Logout,
+  PrecisionManufacturing as MachinesIcon,
+  Menu as MenuIcon,
+  Inventory2 as ProductionIcon,
+  QrCodeScanner as QRIcon,
+} from '@mui/icons-material';
+import {
   AppBar,
-  Toolbar,
-  List,
-  Typography,
+  Avatar,
+  Box,
   Divider,
+  Drawer,
   IconButton,
+  List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Avatar,
   Menu,
   MenuItem,
+  Toolbar,
+  Typography,
 } from '@mui/material';
-import {
-  Menu as MenuIcon,
-  Dashboard as DashboardIcon,
-  Precision as MachinesIcon,
-  Bolt as EnergyIcon,
-  Inventory as ProductionIcon,
-  Analytics as AnalyticsIcon,
-  QrCodeScanner as QRIcon,
-  SmartToy as AIIcon,
-  AccountCircle,
-  Logout,
-} from '@mui/icons-material';
+import React, { useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../services/authContext';
 
 const drawerWidth = 260;
@@ -40,6 +40,7 @@ const menuItems = [
   { text: 'Production', icon: <ProductionIcon />, path: '/production' },
   { text: 'Analytics', icon: <AnalyticsIcon />, path: '/analytics' },
   { text: 'QR Scanner', icon: <QRIcon />, path: '/qr-scanner' },
+  { text: 'AI Predictions', icon: <AIIcon />, path: '/ai-predictions' },
   { text: 'Advanced AI', icon: <AIIcon />, path: '/advanced-features' },
 ];
 
@@ -71,7 +72,9 @@ const MainLayout = () => {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar
         sx={{
-          background: 'linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%)',
+          backgroundColor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
         <Typography
@@ -79,9 +82,7 @@ const MainLayout = () => {
           noWrap
           sx={{
             fontWeight: 700,
-            background: 'linear-gradient(135deg, #00d9ff 0%, #00ff88 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: 'primary.main',
           }}
         >
           GENESIS TWIN
@@ -96,17 +97,20 @@ const MainLayout = () => {
               onClick={() => navigate(item.path)}
               sx={{
                 '&.Mui-selected': {
-                  backgroundColor: 'rgba(0, 217, 255, 0.1)',
-                  borderRight: '3px solid #00d9ff',
+                  backgroundColor: 'primary.light',
+                  color: 'primary.contrastText',
+                  borderRight: '3px solid',
+                  borderRightColor: 'primary.main',
+                  '& .MuiListItemIcon-root': {
+                    color: 'primary.contrastText',
+                  },
                 },
                 '&:hover': {
-                  backgroundColor: 'rgba(0, 217, 255, 0.05)',
+                  backgroundColor: 'action.hover',
                 },
               }}
             >
-              <ListItemIcon sx={{ color: '#00d9ff' }}>
-                {item.icon}
-              </ListItemIcon>
+              <ListItemIcon sx={{ color: 'inherit' }}>{item.icon}</ListItemIcon>
               <ListItemText primary={item.text} />
             </ListItemButton>
           </ListItem>
@@ -128,8 +132,11 @@ const MainLayout = () => {
         sx={{
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           ml: { sm: `${drawerWidth}px` },
-          background: 'linear-gradient(135deg, #151932 0%, #1a1f3a 100%)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          backgroundColor: 'background.paper',
+          color: 'text.primary',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          boxShadow: 1,
         }}
       >
         <Toolbar>
@@ -141,13 +148,14 @@ const MainLayout = () => {
           >
             <MenuIcon />
           </IconButton>
-          
+
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
+            {menuItems.find((item) => item.path === location.pathname)?.text ||
+              'Dashboard'}
           </Typography>
 
           <IconButton onClick={handleMenuOpen} color="inherit">
-            <Avatar sx={{ width: 32, height: 32, bgcolor: '#00d9ff' }}>
+            <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
               {user?.username?.charAt(0).toUpperCase()}
             </Avatar>
           </IconButton>
@@ -188,7 +196,6 @@ const MainLayout = () => {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              backgroundColor: '#151932',
             },
           }}
         >
@@ -201,7 +208,6 @@ const MainLayout = () => {
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
               width: drawerWidth,
-              backgroundColor: '#151932',
             },
           }}
           open
@@ -217,7 +223,7 @@ const MainLayout = () => {
           p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
           mt: 8,
-          backgroundColor: '#0a0e27',
+          backgroundColor: 'background.default',
         }}
       >
         <Outlet />
@@ -227,4 +233,3 @@ const MainLayout = () => {
 };
 
 export default MainLayout;
-
