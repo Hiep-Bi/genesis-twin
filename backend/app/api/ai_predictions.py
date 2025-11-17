@@ -10,6 +10,31 @@ from app.core.database import get_db
 from app.models.user import User
 from app.api.dependencies import get_current_user
 
+import logging
+import sys
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Ensure ai-core package can be imported regardless of working directory
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+AI_CORE_PATH = PROJECT_ROOT / "ai-core"
+if AI_CORE_PATH.exists() and str(AI_CORE_PATH) not in sys.path:
+    sys.path.append(str(AI_CORE_PATH))
+
+try:
+    from enhanced_gemini_client import enhanced_gemini_client  # type: ignore[attr-defined]
+    ENHANCED_GEMINI_SOURCE = "ai-core"
+except ModuleNotFoundError:  # pragma: no cover - runtime safeguard
+    from app.services.mock_enhanced_gemini_client import (  # type: ignore
+        enhanced_gemini_client,
+    )
+
+    ENHANCED_GEMINI_SOURCE = "mock"
+    logger.warning(
+        "enhanced_gemini_client module not found; using mock fallback predictions."
+    )
+
 router = APIRouter(prefix="/ai/predictions", tags=["AI Predictions"])
 
 
@@ -214,11 +239,6 @@ async def predict_defect_advanced(
     """
     
     try:
-        # Import enhanced Gemini client
-        import sys
-        sys.path.append('../ai-core')
-        from enhanced_gemini_client import enhanced_gemini_client
-        
         results = []
         
         for sensor_data in data:

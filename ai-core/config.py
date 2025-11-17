@@ -9,7 +9,10 @@ class AIConfig:
     """AI Core configuration"""
     
     # Gemini API
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    GEMINI_API_KEY = os.getenv(
+        "GEMINI_API_KEY",
+        "AIzaSyAoAqbfLHYxgGokxM7GFEoEfeXdESREwaQ"
+    )
     GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
     GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.7"))
     GEMINI_MAX_TOKENS = int(os.getenv("GEMINI_MAX_TOKENS", "2048"))

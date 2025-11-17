@@ -11,6 +11,7 @@ import {
   CardContent,
   Chip,
   Container,
+  Divider,
   Grid,
   LinearProgress,
   Paper,
@@ -74,6 +75,19 @@ const Analytics = () => {
   });
   const [advancedResult, setAdvancedResult] = useState(null);
   const [advancedLoading, setAdvancedLoading] = useState(false);
+
+  const statusColorMap = {
+    normal: 'success',
+    warning: 'warning',
+    critical: 'error',
+  };
+
+  const riskColorMap = {
+    low: 'success',
+    'medium-low': 'success',
+    medium: 'warning',
+    high: 'error',
+  };
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -139,16 +153,21 @@ const Analytics = () => {
         },
       ];
       const response = await aiPredictionsAPI.predictAdvancedDefect(payload);
-      setAdvancedResult(response.data?.predictions || response.predictions);
+      const normalizedResults =
+        response.data?.predictions || response.predictions || [];
+      setAdvancedResult(normalizedResults);
+      updateLocalHistoryFromResults(normalizedResults);
     } catch (error) {
-      setAdvancedResult([
+      const fallbackResult = [
         {
           status: 'warning',
           result:
             error.response?.data?.detail ||
             'Prediction failed. Please verify AI Core is running.',
         },
-      ]);
+      ];
+      setAdvancedResult(fallbackResult);
+      updateLocalHistoryFromResults(fallbackResult);
     } finally {
       setAdvancedLoading(false);
     }
@@ -161,6 +180,511 @@ const Analytics = () => {
     : agvFallback?.resource_requirements
     ? [String(agvFallback.resource_requirements)]
     : fallbackAgvFallback.resource_requirements.map((item) => String(item));
+
+  const formatLabel = (label) =>
+    label.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+
+  const renderImpactChips = (impact) => {
+    if (!impact || typeof impact !== 'object') return null;
+    return (
+      <Stack direction="row" spacing={1} flexWrap="wrap" mt={1}>
+        {Object.entries(impact).map(([key, value]) =>
+          key === 'risk_level' ? null : (
+            <Chip
+              key={key}
+              label={`${formatLabel(key)}: ${value}`}
+              size="small"
+              variant="outlined"
+            />
+          ),
+        )}
+      </Stack>
+    );
+  };
+
+  const JsonPreview = ({ data }) => (
+    <Box
+      component="pre"
+      sx={{
+        backgroundColor: 'grey.50',
+        borderRadius: 1,
+        p: 1,
+        fontSize: 12,
+        maxHeight: 200,
+        overflow: 'auto',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      {JSON.stringify(data, null, 2)}
+    </Box>
+  );
+
+  const renderSummaryValue = (value) => {
+    if (value === null || value === undefined || value === '') {
+      return (
+        <Typography variant="body2" color="text.secondary">
+          —
+        </Typography>
+      );
+    }
+    if (typeof value === 'object') {
+      return <JsonPreview data={value} />;
+    }
+    return (
+      <Typography variant="body2">
+        {typeof value === 'number' ? value.toLocaleString() : String(value)}
+      </Typography>
+    );
+  };
+
+  const updateLocalHistoryFromResults = (results) => {
+    if (!Array.isArray(results) || results.length === 0) return;
+    const timestamp = new Date().toISOString();
+
+    const syntheticPredictions = results
+      .map((res, idx) => {
+        const detail = res.detailed_analysis || {};
+        const machineId =
+          detail.machine_id || res.machine_id || advancedForm.machine_id;
+        const status = (
+          detail.status ||
+          res.status ||
+          'analysis'
+        ).toLowerCase();
+        const confidence =
+          detail.diagnosis?.confidence ??
+          res.confidence ??
+          res.confidence_score ??
+          0.5;
+
+        return {
+          id: `local-${timestamp}-${idx}`,
+          prediction_type: status,
+          target_id: machineId,
+          confidence_score: confidence,
+          created_at: timestamp,
+          prediction_data: detail.diagnosis || res,
+        };
+      })
+      .filter(Boolean);
+
+    if (syntheticPredictions.length > 0) {
+      setPredictions((prev) => {
+        const base = prev.length > 0 ? prev : fallbackPredictions;
+        return [...syntheticPredictions, ...base].slice(0, 6);
+      });
+    }
+
+    const syntheticControls = results
+      .map((res) => {
+        const detail = res.detailed_analysis || {};
+        const machineId =
+          detail.machine_id || res.machine_id || advancedForm.machine_id;
+        const recommendations =
+          detail.recommendations ||
+          res.recommendations ||
+          (Array.isArray(res.fallback_instructions)
+            ? res.fallback_instructions.map(
+                (instruction) =>
+                  instruction.title ||
+                  instruction.description ||
+                  instruction.action,
+              )
+            : []);
+
+        if (!recommendations || recommendations.length === 0) {
+          return null;
+        }
+
+        return {
+          machine_code: machineId,
+          status: res.status || detail.status || 'planned',
+          timestamp,
+          adjustments: {
+            actions: recommendations.slice(0, 2),
+            scenario: detail.scenarios?.[0]?.name,
+          },
+        };
+      })
+      .filter(Boolean);
+
+    if (syntheticControls.length > 0) {
+      setControlHistory((prev) => {
+        const base = prev.length > 0 ? prev : fallbackControlHistory;
+        return [...syntheticControls, ...base].slice(0, 10);
+      });
+    }
+  };
+
+  const renderAdvancedResultCard = (res, idx) => {
+    const detail = res?.detailed_analysis;
+    if (!detail) {
+      const status = (res.status || 'info').toLowerCase();
+      const statusColor = statusColorMap[status] || 'info';
+      const fallbackInstructions = Array.isArray(res.fallback_instructions)
+        ? res.fallback_instructions
+        : [];
+      const summaryEntries = Object.entries(res || {}).filter(
+        ([key]) =>
+          ![
+            'status',
+            'result',
+            'fallback_instructions',
+            'recommendations',
+          ].includes(key),
+      );
+      const recommendations = Array.isArray(res.recommendations)
+        ? res.recommendations
+        : [];
+
+      return (
+        <Paper
+          key={`advanced-result-${idx}`}
+          variant="outlined"
+          sx={{ p: 2, mb: 2, bgcolor: 'background.default' }}
+        >
+          <Box
+            display="flex"
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            justifyContent="space-between"
+            flexWrap="wrap"
+            gap={2}
+          >
+            <Typography variant="h6">Fallback plan</Typography>
+            <Chip label={status.toUpperCase()} color={statusColor} />
+          </Box>
+
+          {res.result && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1, whiteSpace: 'pre-line' }}
+            >
+              {res.result}
+            </Typography>
+          )}
+
+          {summaryEntries.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Stack spacing={1}>
+                {summaryEntries.map(([key, value]) => (
+                  <Box key={key}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ textTransform: 'capitalize' }}
+                    >
+                      {formatLabel(key)}
+                    </Typography>
+                    {renderSummaryValue(value)}
+                  </Box>
+                ))}
+              </Stack>
+            </>
+          )}
+
+          {fallbackInstructions.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" color="text.secondary">
+                Fallback Instructions
+              </Typography>
+              <Stack spacing={1} sx={{ mt: 1 }}>
+                {fallbackInstructions.map((instruction, instructionIdx) => (
+                  <Paper
+                    key={`instruction-${instructionIdx}`}
+                    variant="outlined"
+                    sx={{ p: 1.5 }}
+                  >
+                    <Typography variant="subtitle2">
+                      {instruction.title || `Step ${instruction.step}`}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {instruction.description || instruction.action}
+                    </Typography>
+                  </Paper>
+                ))}
+              </Stack>
+            </>
+          )}
+
+          {recommendations.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" color="text.secondary">
+                Recommendations
+              </Typography>
+              <Stack component="ul" spacing={0.75} sx={{ pl: 3, mt: 0.5 }}>
+                {recommendations.map((rec, recIdx) => (
+                  <Typography
+                    key={`fallback-rec-${recIdx}`}
+                    component="li"
+                    variant="body2"
+                  >
+                    {rec}
+                  </Typography>
+                ))}
+              </Stack>
+            </>
+          )}
+        </Paper>
+      );
+    }
+
+    const status = (detail.status || res.status || 'info').toLowerCase();
+    const statusColor = statusColorMap[status] || 'info';
+    const diagnosis = detail.diagnosis || {};
+    const reasoning = diagnosis.reasoning || {};
+    const maintenance = detail.maintenance_recommendation || {};
+    const scenarios = Array.isArray(detail.scenarios) ? detail.scenarios : [];
+    const recommendations = Array.isArray(detail.recommendations)
+      ? detail.recommendations
+      : Array.isArray(res.recommendations)
+      ? res.recommendations
+      : [];
+    const evidence = Array.isArray(reasoning.evidence)
+      ? reasoning.evidence
+      : [];
+    const triggers = Array.isArray(reasoning.triggers)
+      ? reasoning.triggers
+      : [];
+    const confidenceValue =
+      typeof diagnosis.confidence === 'number'
+        ? diagnosis.confidence
+        : typeof res.confidence === 'number'
+        ? res.confidence
+        : null;
+    const maintenanceWindow = maintenance.next_maintenance_window || {};
+    const goldenSlot = maintenance.optimal_scheduling?.golden_slot;
+
+    const machineId =
+      detail.machine_id || res.machine_id || advancedForm.machine_id;
+    const machineType =
+      detail.machine_type || res.machine_type || advancedForm.machine_type;
+
+    return (
+      <Paper
+        key={`advanced-result-${idx}`}
+        variant="outlined"
+        sx={{ p: 2, mb: 2, bgcolor: 'background.default' }}
+      >
+        <Box
+          display="flex"
+          alignItems={{ xs: 'flex-start', md: 'center' }}
+          justifyContent="space-between"
+          flexWrap="wrap"
+          gap={2}
+        >
+          <Box>
+            <Typography variant="caption" color="text.secondary">
+              Machine
+            </Typography>
+            <Typography variant="h6">{machineId}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {machineType}
+            </Typography>
+          </Box>
+          <Chip label={status.toUpperCase()} color={statusColor} />
+        </Box>
+
+        {confidenceValue !== null && (
+          <Box mt={2}>
+            <Typography variant="caption" color="text.secondary">
+              AI Confidence
+            </Typography>
+            <Box display="flex" alignItems="center" gap={1}>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(Math.max(confidenceValue, 0), 1) * 100}
+                sx={{ flex: 1, height: 8, borderRadius: 4 }}
+                color={statusColor}
+              />
+              <Typography variant="caption" fontWeight={700}>
+                {(confidenceValue * 100).toFixed(1)}%
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle2" color="text.secondary">
+          Diagnosis
+        </Typography>
+        <Typography variant="h6" sx={{ textTransform: 'capitalize' }}>
+          {diagnosis.issue_detected || 'No issue detected'}
+        </Typography>
+        {diagnosis.root_cause && (
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Root cause: {diagnosis.root_cause}
+          </Typography>
+        )}
+        {evidence.length > 0 && (
+          <Stack spacing={0.5} sx={{ pl: 1 }}>
+            {evidence.map((item, evidenceIdx) => (
+              <Typography
+                key={`evidence-${evidenceIdx}`}
+                variant="body2"
+                color="text.secondary"
+              >
+                • {item}
+              </Typography>
+            ))}
+          </Stack>
+        )}
+        {reasoning.pattern_matching && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Pattern match: {reasoning.pattern_matching}
+          </Typography>
+        )}
+        {triggers.length > 0 && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" mt={1}>
+            {triggers.map((trigger, triggerIdx) => (
+              <Chip
+                key={`trigger-${triggerIdx}`}
+                label={trigger}
+                size="small"
+                color="info"
+                variant="outlined"
+              />
+            ))}
+          </Stack>
+        )}
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle2" color="text.secondary">
+          Maintenance Window
+        </Typography>
+        <Grid container spacing={2} sx={{ mt: 0.5 }}>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">
+              Avg cycle
+            </Typography>
+            <Typography variant="body1" fontWeight={700}>
+              {maintenance.avg_maintenance_cycle_days ?? '—'} ngày
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">
+              Est. downtime
+            </Typography>
+            <Typography variant="body1" fontWeight={700}>
+              {maintenance.estimated_downtime_hours ?? '—'} giờ
+            </Typography>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Typography variant="caption" color="text.secondary">
+              Next window
+            </Typography>
+            <Typography variant="body1" fontWeight={700}>
+              {maintenanceWindow.start || '—'} → {maintenanceWindow.end || '—'}
+            </Typography>
+          </Grid>
+        </Grid>
+        {goldenSlot && (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            <strong>Golden Slot:</strong> {goldenSlot.date}{' '}
+            {goldenSlot.time_range} – {goldenSlot.reason}.{' '}
+            {goldenSlot.cost_optimization}
+          </Alert>
+        )}
+
+        {scenarios.length > 0 && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" color="text.secondary">
+              Scenario Analysis
+            </Typography>
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              {scenarios.map((scenario, scenarioIdx) => {
+                const riskColor =
+                  riskColorMap[
+                    String(scenario.impact?.risk_level).toLowerCase()
+                  ] || 'default';
+                return (
+                  <Box
+                    key={`scenario-${scenarioIdx}`}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      p: 1.5,
+                    }}
+                  >
+                    <Box
+                      display="flex"
+                      justifyContent="space-between"
+                      alignItems="center"
+                      gap={1}
+                      flexWrap="wrap"
+                    >
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {scenario.name}
+                      </Typography>
+                      {scenario.impact?.risk_level && (
+                        <Chip
+                          label={`Risk: ${scenario.impact.risk_level}`}
+                          size="small"
+                          color={riskColor}
+                          variant="outlined"
+                        />
+                      )}
+                    </Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {scenario.description}
+                    </Typography>
+                    {renderImpactChips(scenario.impact)}
+                  </Box>
+                );
+              })}
+            </Stack>
+          </>
+        )}
+
+        {recommendations.length > 0 && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" color="text.secondary">
+              Recommended Actions
+            </Typography>
+            <Stack component="ul" spacing={0.75} sx={{ pl: 3, mt: 0.5 }}>
+              {recommendations.map((rec, recIdx) => (
+                <Typography
+                  key={`recommendation-${recIdx}`}
+                  component="li"
+                  variant="body2"
+                >
+                  {rec}
+                </Typography>
+              ))}
+            </Stack>
+          </>
+        )}
+
+        {res.result && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" color="text.secondary">
+              Narrative
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ whiteSpace: 'pre-line' }}
+            >
+              {res.result}
+            </Typography>
+          </>
+        )}
+      </Paper>
+    );
+  };
+
+  const hasAdvancedResult =
+    Array.isArray(advancedResult) && advancedResult.length > 0;
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -261,16 +785,12 @@ const Analytics = () => {
                   size="small"
                 />
               </Stack>
-              {advancedResult ? (
-                advancedResult.map((res, idx) => (
-                  <Alert
-                    key={idx}
-                    severity={res.status === 'warning' ? 'warning' : 'info'}
-                    sx={{ mb: 1 }}
-                  >
-                    {res.result || JSON.stringify(res)}
-                  </Alert>
-                ))
+              {hasAdvancedResult ? (
+                <Stack>
+                  {advancedResult.map((res, idx) =>
+                    renderAdvancedResultCard(res, idx),
+                  )}
+                </Stack>
               ) : (
                 <Typography variant="body2" color="text.secondary">
                   Provide quick sensor readings above and click Analyze to run
