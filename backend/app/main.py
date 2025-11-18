@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.database import init_db, close_db
 from app.core.redis_client import redis_client
 from app.api import auth, factories, suppliers, materials, system_settings
-from app.api import machines, sensors, production, analytics, ai_predictions, traceability, advanced_features, factory_operations
+from app.api import machines, sensors, production, analytics, ai_predictions, traceability, advanced_features, factory_operations, mlops, iot_hub
 from app.websockets import websocket_manager
 from app.middleware.ip_whitelist import IPWhitelistMiddleware
 
@@ -177,6 +177,8 @@ app.include_router(suppliers.router, prefix=settings.API_V1_PREFIX)
 app.include_router(materials.router, prefix=settings.API_V1_PREFIX)
 app.include_router(system_settings.router, prefix=settings.API_V1_PREFIX)
 app.include_router(factory_operations.router, prefix=settings.API_V1_PREFIX)
+app.include_router(mlops.router, prefix=settings.API_V1_PREFIX)
+app.include_router(iot_hub.router, prefix=settings.API_V1_PREFIX)
 
 # Include WebSocket endpoint
 from app.websockets.ws_handler import router as ws_router

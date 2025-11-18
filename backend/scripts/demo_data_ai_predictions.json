@@ -1,0 +1,99 @@
+{
+  "scenario": "AI Predictions - Anomaly Detection với Root Cause Analysis",
+  "description": "Scenario để demo Enhanced AI Predictions với reasoning",
+  "sensor_data": [
+    {
+      "timestamp": "2025-01-15T08:00:00Z",
+      "machine_id": "M003",
+      "machine_type": "CNC",
+      "temperature": 75.5,
+      "vibration_level": 2.1,
+      "power_consumption": 23.0,
+      "pressure": 5.0,
+      "material_flow_rate": 20.0,
+      "cycle_time": 118.0,
+      "error_rate": 0.5,
+      "downtime": 0,
+      "maintenance_flag": 0,
+      "efficiency_score": 12.0,
+      "production_status": 0
+    },
+    {
+      "timestamp": "2025-01-15T09:20:00Z",
+      "machine_id": "M003",
+      "machine_type": "CNC",
+      "temperature": 87.5,
+      "vibration_level": 6.2,
+      "power_consumption": 28.5,
+      "pressure": 5.8,
+      "material_flow_rate": 15.2,
+      "cycle_time": 125.0,
+      "error_rate": 1.2,
+      "downtime": 0,
+      "maintenance_flag": 1,
+      "efficiency_score": 0.0,
+      "production_status": 0
+    }
+  ],
+  "expected_result": {
+    "diagnosis": {
+      "anomaly_detected": true,
+      "severity": "high",
+      "root_causes": [
+        {
+          "cause": "Vibration quá cao (6.2 > 5.0)",
+          "confidence": 0.95,
+          "reason": "Vibration level tăng đột ngột từ 2.1 lên 6.2, vượt ngưỡng an toàn"
+        },
+        {
+          "cause": "Nhiệt độ tăng cao (87.5°C)",
+          "confidence": 0.88,
+          "reason": "Temperature tăng từ 75.5°C lên 87.5°C, có thể do bearing wear"
+        }
+      ],
+      "similar_cases": [
+        {
+          "case_id": "CASE-2024-045",
+          "similarity": 0.92,
+          "resolution": "Thay bearing và làm sạch coolant system",
+          "downtime": 120
+        }
+      ]
+    },
+    "maintenance_recommendation": {
+      "action": "Immediate maintenance required",
+      "golden_time_slot": {
+        "start_time": "2025-01-15T14:00:00Z",
+        "end_time": "2025-01-15T16:00:00Z",
+        "downtime_cost": 500.0,
+        "reason": "Thời điểm production thấp nhất, downtime cost tối thiểu"
+      },
+      "estimated_duration_minutes": 120
+    },
+    "scenarios": [
+      {
+        "name": "Maintenance ngay",
+        "cost_usd": 500.0,
+        "carbon_kg": 50.0,
+        "downtime_minutes": 120,
+        "risk": "Low"
+      },
+      {
+        "name": "Chờ đến cuối ca",
+        "cost_usd": 800.0,
+        "carbon_kg": 75.0,
+        "downtime_minutes": 180,
+        "risk": "Medium"
+      },
+      {
+        "name": "Chờ đến ngày mai",
+        "cost_usd": 1500.0,
+        "carbon_kg": 120.0,
+        "downtime_minutes": 480,
+        "risk": "High"
+      }
+    ],
+    "recommendation": "Maintenance ngay - Cost thấp nhất, risk thấp"
+  }
+}
+

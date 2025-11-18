@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-11-18T08:45:55Z",
+  "machine_id": "MACHINE-001",
+  "machine_type": "CNC",
+  "temperature": 82.0,
+  "vibration_level": 4.8,
+  "power_consumption": 24.0,
+  "pressure": 5.2,
+  "material_flow_rate": 19.5,
+  "cycle_time": 120.5,
+  "error_rate": 0.62,
+  "downtime": 0,
+  "maintenance_flag": 1,
+  "efficiency_score": 8.0,
+  "production_status": 0,
+  "notes": "Copy these values into Analytics > Run Advanced Defect Prediction input fields during the video demo."
+}
+

@@ -129,14 +129,10 @@ services:
     environment:
       - REACT_APP_API_URL=http://localhost:8000
       - REACT_APP_WS_URL=ws://localhost:8000/ws
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
     networks:
       - genesis_network
-    command: npm start
 
 volumes:
   postgres_data:
