@@ -13,7 +13,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     hashed_password VARCHAR(255) NOT NULL,
     full_name VARCHAR(255),
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'engineer', 'viewer', 'operator')),
+    role VARCHAR(20) NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'engineer', 'viewer', 'operator')),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -44,7 +44,7 @@ CREATE TABLE audit_logs (
 -- Factory configuration
 CREATE TABLE factories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) UNIQUE NOT NULL,
     location VARCHAR(255),
     config JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

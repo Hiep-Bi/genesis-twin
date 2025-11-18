@@ -11,9 +11,10 @@ import time
 from app.core.config import settings
 from app.core.database import init_db, close_db
 from app.core.redis_client import redis_client
-from app.api import auth
+from app.api import auth, factories, suppliers, materials, system_settings
 from app.api import machines, sensors, production, analytics, ai_predictions, traceability, advanced_features, factory_operations
 from app.websockets import websocket_manager
+from app.middleware.ip_whitelist import IPWhitelistMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -93,6 +94,15 @@ if settings.ENVIRONMENT == "production":
         allowed_hosts=["*"]  # Configure with actual hosts in production
     )
 
+# IP Whitelist Middleware (restrict dashboard access to specific IPs/networks)
+if settings.ENABLE_IP_WHITELIST:
+    app.add_middleware(
+        IPWhitelistMiddleware,
+        allowed_ips=settings.ALLOWED_IPS,
+        allowed_networks=settings.ALLOWED_NETWORKS
+    )
+    logger.info(f"IP Whitelist enabled - Allowed IPs: {settings.ALLOWED_IPS}, Networks: {settings.ALLOWED_NETWORKS}")
+
 
 # Request timing middleware
 @app.middleware("http")
@@ -162,6 +172,10 @@ app.include_router(analytics.router, prefix=settings.API_V1_PREFIX)
 app.include_router(ai_predictions.router, prefix=settings.API_V1_PREFIX)
 app.include_router(traceability.router, prefix=settings.API_V1_PREFIX)
 app.include_router(advanced_features.router, prefix=settings.API_V1_PREFIX)
+app.include_router(factories.router, prefix=settings.API_V1_PREFIX)
+app.include_router(suppliers.router, prefix=settings.API_V1_PREFIX)
+app.include_router(materials.router, prefix=settings.API_V1_PREFIX)
+app.include_router(system_settings.router, prefix=settings.API_V1_PREFIX)
 app.include_router(factory_operations.router, prefix=settings.API_V1_PREFIX)
 
 # Include WebSocket endpoint

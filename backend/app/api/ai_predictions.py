@@ -1,14 +1,39 @@
 """AI Predictions API - Advanced defect prediction với reasoning"""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-import pandas as pd
-import pickle
+from uuid import UUID
+
 from app.core.database import get_db
 from app.models.user import User
 from app.api.dependencies import get_current_user
+
+import logging
+import sys
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Ensure ai-core package can be imported regardless of working directory
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+AI_CORE_PATH = PROJECT_ROOT / "ai-core"
+if AI_CORE_PATH.exists() and str(AI_CORE_PATH) not in sys.path:
+    sys.path.append(str(AI_CORE_PATH))
+
+try:
+    from enhanced_gemini_client import enhanced_gemini_client  # type: ignore[attr-defined]
+    ENHANCED_GEMINI_SOURCE = "ai-core"
+except ModuleNotFoundError:  # pragma: no cover - runtime safeguard
+    from app.services.mock_enhanced_gemini_client import (  # type: ignore
+        enhanced_gemini_client,
+    )
+
+    ENHANCED_GEMINI_SOURCE = "mock"
+    logger.warning(
+        "enhanced_gemini_client module not found; using mock fallback predictions."
+    )
 
 router = APIRouter(prefix="/ai/predictions", tags=["AI Predictions"])
 
@@ -41,6 +66,65 @@ class AdvancedPredictionResponse(BaseModel):
     timestamp: str
     machine_id: str
     machine_type: str
+
+
+class AIPredictionResponse(BaseModel):
+    id: UUID
+    prediction_type: str
+    target_id: Optional[UUID]
+    prediction_data: Dict[str, Any]
+    confidence_score: Optional[float]
+    actual_outcome: Optional[Dict[str, Any]]
+    accuracy: Optional[float]
+    created_at: datetime
+    prediction_time: Optional[datetime]
+    outcome_time: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/history", response_model=List[AIPredictionResponse])
+async def list_ai_predictions(
+    prediction_type: Optional[str] = Query(None),
+    target_id: Optional[UUID] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List historical AI predictions
+    """
+    from app.models.ai_prediction import AIPrediction
+    query = db.query(AIPrediction)
+
+    if prediction_type:
+        query = query.filter(AIPrediction.prediction_type == prediction_type)
+    if target_id:
+        query = query.filter(AIPrediction.target_id == target_id)
+
+    predictions = query.offset(skip).limit(limit).all()
+    return predictions
+
+
+@router.get("/history/{prediction_id}", response_model=AIPredictionResponse)
+async def get_ai_prediction(
+    prediction_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get a single AI prediction by ID
+    """
+    from app.models.ai_prediction import AIPrediction
+    prediction = db.query(AIPrediction).filter(AIPrediction.id == prediction_id).first()
+    if not prediction:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI Prediction not found"
+        )
+    return prediction
 
 
 @router.post("/advanced-defect", response_model=Dict[str, Any])
@@ -96,18 +180,32 @@ async def predict_defect_advanced(
     """
     
     try:
-        # Import enhanced Gemini client
-        import sys
-        sys.path.append('../ai-core')
-        from enhanced_gemini_client import enhanced_gemini_client
-        from rule_base_prediction import predict
-        
         results = []
+        
+        # Try to import rule_base_prediction if available
+        try:
+            import sys
+            from pathlib import Path
+            PROJECT_ROOT = Path(__file__).resolve().parents[3]
+            AI_CORE_PATH = PROJECT_ROOT / "ai-core"
+            if AI_CORE_PATH.exists() and str(AI_CORE_PATH) not in sys.path:
+                sys.path.append(str(AI_CORE_PATH))
+            from rule_base_prediction import predict
+            has_rule_base = True
+        except ImportError:
+            has_rule_base = False
+            logger.warning("rule_base_prediction not available, skipping rule-based filtering")
         
         for sensor_data in data:
             # Convert to dict
             current_data = sensor_data.dict()
-            filtered_data = predict(current_data)
+            
+            # Apply rule-based filtering if available
+            if has_rule_base:
+                filtered_data = predict(current_data)
+            else:
+                # If no rule base, treat as potentially abnormal (will go through AI prediction)
+                filtered_data = 1
             # Determine status first
             if filtered_data == 0:
                 # Normal operation
@@ -146,6 +244,7 @@ async def predict_defect_advanced(
         )
 
 
+
 def format_advanced_response(prediction: Dict, sensor_data: SensorDataInput) -> Dict:
     """Format response theo yêu cầu của user"""
     
@@ -158,24 +257,24 @@ def format_advanced_response(prediction: Dict, sensor_data: SensorDataInput) -> 
     evidence_text = "\n    ".join(reasoning.get('evidence', []))
     
     # Format response
-    response = f"""🚨 CẢNH BÁO BẤT THƯỜNG: Phát hiện sự cố trên thiết bị {sensor_data.machine_type} ({sensor_data.machine_id}) tại thời điểm {sensor_data.timestamp}.
+    response = f""" CẢNH BÁO BẤT THƯỜNG: Phát hiện sự cố trên thiết bị {sensor_data.machine_type} ({sensor_data.machine_id}) tại thời điểm {sensor_data.timestamp}.
 
-⏱️ Lịch sử bảo trì gần đây cho thấy chu kỳ trung bình: {maint.get('avg_maintenance_cycle_days', 95)} ngày.
+    Lịch sử bảo trì gần đây cho thấy chu kỳ trung bình: {maint.get('avg_maintenance_cycle_days', 95)} ngày.
 
-🔍 Dự đoán nguyên nhân có thể là: {diag.get('issue_detected', 'Chưa xác định')}
+    Dự đoán nguyên nhân có thể là: {diag.get('issue_detected', 'Chưa xác định')}
 
-📋 Lý do chẩn đoán:
-    {evidence_text}
-    {reasoning.get('pattern_matching', '')}
+    Lý do chẩn đoán:
+        {evidence_text}
+        {reasoning.get('pattern_matching', '')}
 
-📅 Thời gian dừng máy bảo trì trung bình: {maint.get('estimated_downtime_hours', 7.0):.1f} giờ
+    Thời gian dừng máy bảo trì trung bình: {maint.get('estimated_downtime_hours', 7.0):.1f} giờ
 
-🎯 Đề xuất Kế hoạch (Tối ưu hóa):
-    {maint.get('optimal_scheduling', {}).get('golden_slot', {}).get('reason', 'Chưa có kế hoạch')}
-    ✅ {maint.get('optimal_scheduling', {}).get('golden_slot', {}).get('cost_optimization', '')}
+    Đề xuất Kế hoạch (Tối ưu hóa):
+        {maint.get('optimal_scheduling', {}).get('golden_slot', {}).get('reason', 'Chưa có kế hoạch')}
+        {maint.get('optimal_scheduling', {}).get('golden_slot', {}).get('cost_optimization', '')}
 
-💡 Đề xuất thay thế (Nếu khẩn cấp):
-"""
+    Đề xuất thay thế (Nếu khẩn cấp):
+    """
     
     # Add scenarios
     for i, scenario in enumerate(scenarios, 1):
@@ -194,7 +293,7 @@ def format_advanced_response(prediction: Dict, sensor_data: SensorDataInput) -> 
             response += "\n      Hậu quả: " + ", ".join(impact_lines)
     
     # Add recommendations
-    response += "\n\n✅ Các hành động khuyến nghị:"
+    response += "\n\n Các hành động khuyến nghị:"
     for rec in prediction.get('recommendations', []):
         response += f"\n    {rec}"
     

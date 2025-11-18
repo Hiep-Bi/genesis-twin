@@ -67,11 +67,28 @@ class Settings(BaseSettings):
     ENABLE_METRICS: bool = True
     METRICS_PORT: int = 9090
     
+    # IP Whitelist for dashboard access (empty list = allow all)
+    ALLOWED_IPS: List[str] = []  # e.g., ["192.168.1.100", "10.0.0.5"]
+    ALLOWED_NETWORKS: List[str] = []  # e.g., ["192.168.1.0/24", "10.0.0.0/8"]
+    ENABLE_IP_WHITELIST: bool = False  # Set to True to enable IP whitelist
+    
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v):
         if isinstance(v, str):
             return [i.strip() for i in v.split(",")]
         return v
+    
+    @validator("ALLOWED_IPS", pre=True)
+    def assemble_allowed_ips(cls, v):
+        if isinstance(v, str):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v or []
+    
+    @validator("ALLOWED_NETWORKS", pre=True)
+    def assemble_allowed_networks(cls, v):
+        if isinstance(v, str):
+            return [i.strip() for i in v.split(",") if i.strip()]
+        return v or []
     
     class Config:
         env_file = ".env"

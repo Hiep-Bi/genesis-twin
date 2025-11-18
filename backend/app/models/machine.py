@@ -6,6 +6,7 @@ from datetime import datetime
 import uuid
 
 from app.core.database import Base
+from app.models.factory import Factory
 
 
 class Machine(Base):
@@ -29,6 +30,7 @@ class Machine(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
+    factory = relationship("Factory", back_populates="machines")
     sensors = relationship("Sensor", back_populates="machine", cascade="all, delete-orphan")
     
     def __repr__(self):

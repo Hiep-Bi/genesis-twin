@@ -1,43 +1,45 @@
-import React, { useState } from 'react';
 import {
-  Container,
-  Grid,
-  Paper,
-  Typography,
+  CheckCircle as CheckIcon,
+  Nature as ESGIcon,
+  Factory as FactoryIcon,
+  Print as PrintIcon,
+  Science as QCIcon,
+  QrCodeScanner as QrIcon,
+  Search as SearchIcon,
+  LocalShipping as ShipIcon,
+  Inventory2 as WarehouseIcon,
+} from '@mui/icons-material';
+import {
+  Timeline,
+  TimelineConnector,
+  TimelineContent,
+  TimelineDot,
+  TimelineItem,
+  TimelineOppositeContent,
+  TimelineSeparator,
+} from '@mui/lab';
+import {
+  Alert,
   Box,
-  TextField,
   Button,
   Card,
   CardContent,
   Chip,
-  Timeline,
-  TimelineItem,
-  TimelineSeparator,
-  TimelineConnector,
-  TimelineContent,
-  TimelineDot,
-  TimelineOppositeContent,
-  Alert,
   CircularProgress,
+  Container,
   Divider,
+  Grid,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
-  TableRow
+  TableRow,
+  TextField,
+  Typography,
 } from '@mui/material';
-import {
-  QrCodeScanner as QrIcon,
-  Search as SearchIcon,
-  CheckCircle as CheckIcon,
-  LocalShipping as ShipIcon,
-  Factory as FactoryIcon,
-  Inventory as WarehouseIcon,
-  Science as QCIcon,
-  Eco as EcoIcon,
-  Print as PrintIcon
-} from '@mui/icons-material';
-import api from '../services/api';
+import React, { useState } from 'react';
+import { traceabilityAPI } from '../services/api';
 
 const QRScanner = () => {
   const [qrCode, setQrCode] = useState('');
@@ -56,7 +58,7 @@ const QRScanner = () => {
     setTraceData(null);
 
     try {
-      const response = await api.get(`/api/v1/traceability/trace/${qrCode}`);
+      const response = await traceabilityAPI.traceByQrCode(qrCode);
       setTraceData(response.data);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to trace QR code');
@@ -66,7 +68,10 @@ const QRScanner = () => {
   };
 
   const handlePrintQR = () => {
-    window.open(`/api/v1/traceability/qr-image/${qrCode}?size=500`, '_blank');
+    window.open(
+      traceabilityAPI.getQrCodeImage(qrCode, 500).request.responseURL,
+      '_blank',
+    );
   };
 
   const getStepIcon = (step) => {
@@ -129,7 +134,9 @@ const QRScanner = () => {
               />
               <Button
                 variant="contained"
-                startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
+                startIcon={
+                  loading ? <CircularProgress size={20} /> : <SearchIcon />
+                }
                 onClick={handleSearch}
                 disabled={loading}
                 sx={{ minWidth: 120 }}
@@ -153,7 +160,14 @@ const QRScanner = () => {
             <Grid item xs={12} md={6}>
               <Card>
                 <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      mb: 2,
+                    }}
+                  >
                     <Typography variant="h6">
                       📜 Digital Birth Certificate
                     </Typography>
@@ -172,48 +186,80 @@ const QRScanner = () => {
                     <Table size="small">
                       <TableBody>
                         <TableRow>
-                          <TableCell><strong>QR Code</strong></TableCell>
+                          <TableCell>
+                            <strong>QR Code</strong>
+                          </TableCell>
                           <TableCell>
                             <Chip label={traceData.qr_code} color="primary" />
                           </TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell><strong>Born At</strong></TableCell>
                           <TableCell>
-                            {new Date(traceData.digital_birth_certificate.born_at).toLocaleString()}
+                            <strong>Born At</strong>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(
+                              traceData.digital_birth_certificate.born_at,
+                            ).toLocaleString()}
                           </TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell><strong>Machine</strong></TableCell>
                           <TableCell>
-                            {traceData.digital_birth_certificate.birthplace.machine}
+                            <strong>Machine</strong>
+                          </TableCell>
+                          <TableCell>
+                            {
+                              traceData.digital_birth_certificate.birthplace
+                                .machine
+                            }
                           </TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell><strong>Factory</strong></TableCell>
                           <TableCell>
-                            {traceData.digital_birth_certificate.birthplace.factory}
+                            <strong>Factory</strong>
+                          </TableCell>
+                          <TableCell>
+                            {
+                              traceData.digital_birth_certificate.birthplace
+                                .factory
+                            }
                           </TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell><strong>Product Code</strong></TableCell>
                           <TableCell>
-                            {traceData.digital_birth_certificate.dna.product_code}
+                            <strong>Product Code</strong>
+                          </TableCell>
+                          <TableCell>
+                            {
+                              traceData.digital_birth_certificate.dna
+                                .product_code
+                            }
                           </TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell><strong>Serial Number</strong></TableCell>
                           <TableCell>
-                            {traceData.digital_birth_certificate.dna.serial_number}
+                            <strong>Serial Number</strong>
+                          </TableCell>
+                          <TableCell>
+                            {
+                              traceData.digital_birth_certificate.dna
+                                .serial_number
+                            }
                           </TableCell>
                         </TableRow>
                         <TableRow>
-                          <TableCell><strong>Quality Status</strong></TableCell>
+                          <TableCell>
+                            <strong>Quality Status</strong>
+                          </TableCell>
                           <TableCell>
                             <Chip
-                              label={traceData.digital_birth_certificate.dna.quality_status}
+                              label={
+                                traceData.digital_birth_certificate.dna
+                                  .quality_status
+                              }
                               color={
-                                traceData.digital_birth_certificate.dna.quality_status === 'passed'
+                                traceData.digital_birth_certificate.dna
+                                  .quality_status === 'passed'
                                   ? 'success'
                                   : 'error'
                               }
@@ -233,7 +279,7 @@ const QRScanner = () => {
               <Card>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
-                    <EcoIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                    <ESGIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                     Environmental Impact
                   </Typography>
 
@@ -241,7 +287,14 @@ const QRScanner = () => {
 
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'success.light', borderRadius: 1 }}>
+                      <Box
+                        sx={{
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: 'success.light',
+                          borderRadius: 1,
+                        }}
+                      >
                         <Typography variant="h5" color="success.dark">
                           {traceData.environmental_impact.energy_consumed_kwh}
                         </Typography>
@@ -249,7 +302,14 @@ const QRScanner = () => {
                       </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                      <Box
+                        sx={{
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: 'info.light',
+                          borderRadius: 1,
+                        }}
+                      >
                         <Typography variant="h5" color="info.dark">
                           {traceData.environmental_impact.carbon_footprint_kg}
                         </Typography>
@@ -257,7 +317,14 @@ const QRScanner = () => {
                       </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
+                      <Box
+                        sx={{
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: 'primary.light',
+                          borderRadius: 1,
+                        }}
+                      >
                         <Typography variant="h5" color="primary.dark">
                           {traceData.environmental_impact.water_used_liters}
                         </Typography>
@@ -265,7 +332,14 @@ const QRScanner = () => {
                       </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Box sx={{ textAlign: 'center', p: 2, bgcolor: 'warning.light', borderRadius: 1 }}>
+                      <Box
+                        sx={{
+                          textAlign: 'center',
+                          p: 2,
+                          bgcolor: 'warning.light',
+                          borderRadius: 1,
+                        }}
+                      >
                         <Typography variant="h5" color="warning.dark">
                           {traceData.environmental_impact.waste_generated_kg}
                         </Typography>
@@ -284,7 +358,8 @@ const QRScanner = () => {
                   🚀 Product Journey ({traceData.total_steps} Steps)
                 </Typography>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Current Location: <strong>{traceData.current_location}</strong>
+                  Current Location:{' '}
+                  <strong>{traceData.current_location}</strong>
                 </Typography>
 
                 <Divider sx={{ my: 2 }} />
@@ -293,13 +368,17 @@ const QRScanner = () => {
                   {traceData.journey.map((step, index) => (
                     <TimelineItem key={index}>
                       <TimelineOppositeContent color="text.secondary">
-                        {step.timestamp ? new Date(step.timestamp).toLocaleString() : 'Pending'}
+                        {step.timestamp
+                          ? new Date(step.timestamp).toLocaleString()
+                          : 'Pending'}
                       </TimelineOppositeContent>
                       <TimelineSeparator>
                         <TimelineDot color={getStepColor(step.step)}>
                           {getStepIcon(step.step)}
                         </TimelineDot>
-                        {index < traceData.journey.length - 1 && <TimelineConnector />}
+                        {index < traceData.journey.length - 1 && (
+                          <TimelineConnector />
+                        )}
                       </TimelineSeparator>
                       <TimelineContent>
                         <Paper elevation={3} sx={{ p: 2 }}>
@@ -329,4 +408,3 @@ const QRScanner = () => {
 };
 
 export default QRScanner;
-
