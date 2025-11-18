@@ -115,14 +115,23 @@ def main():
     parser.add_argument("--email", default="admin@genesis.ai")
     parser.add_argument("--password", default="admin123")
     parser.add_argument("--token", help="Existing JWT access token")
+    parser.add_argument(
+        "--feature",
+        choices=list(DEMO_FILES.keys()) + ["all"],
+        default="all",
+        help="Run a single feature or all sequentially",
+    )
     args = parser.parse_args()
 
     token = args.token or login(args.base_url, args.email, args.password)
 
     try:
-        demo_ai_predictions(args.base_url, token)
-        demo_recovery(args.base_url, token)
-        demo_agv_fallback(args.base_url, token)
+        if args.feature in ("ai", "all"):
+            demo_ai_predictions(args.base_url, token)
+        if args.feature in ("recovery", "all"):
+            demo_recovery(args.base_url, token)
+        if args.feature in ("agv", "all"):
+            demo_agv_fallback(args.base_url, token)
     except requests.HTTPError as exc:
         print("Request failed:", exc.response.text, file=sys.stderr)
         sys.exit(1)
